@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <title>Arch Package Clicker</title>
+    <style>
+        body {
+            font-family: 'Consolas', 'Courier New', monospace;
+            background-color: #0d0d0d;
+            color: #00ff00;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            gap: 20px;
+            padding: 20px;
+            min-height: 100vh;
+        }
+        .panel {
+            border: 2px solid #00ff00;
+            padding: 15px;
+            width: 300px;
+            box-shadow: 0 0 10px #00ff00;
+            margin-bottom: 20px;
+        }
+        h2 {
+            text-align: center;
+            border-bottom: 1px dashed #00ff00;
+            padding-bottom: 8px;
+            margin-top: 0;
+            font-size: 1.4em;
+        }
+        button {
+            background-color: #00ff00;
+            color: #0d0d0d;
+            border: none;
+            padding: 10px 15px;
+            font-size: 1.1em;
+            cursor: pointer;
+            width: 100%;
+            margin-top: 10px;
+            transition: background-color 0.1s, transform 0.1s;
+        }
+        button:active:not(:disabled) {
+            transform: scale(0.98);
+        }
+        button:hover:not(:disabled) {
+            background-color: #00dd00;
+        }
+        button:disabled {
+            background-color: #303030;
+            color: #606060;
+            cursor: not-allowed;
+        }
+        .upgrade-item {
+            margin-bottom: 10px;
+            padding: 8px;
+            border: 1px dotted #00ff00;
+        }
+        .upgrade-item strong {
+            display: block;
+            margin-bottom: 5px;
+        }
+        .buy-btn-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .buy-btn-container button {
+            width: auto;
+            margin: 0;
+            padding: 5px 10px;
+            font-size: 1em;
+        }
+        #main-click-btn {
+            background-color: #00ff00;
+            border: 3px solid #00dd00;
+            height: 100px;
+            font-size: 1.5em;
+        }
+        #message-log {
+            margin-top: 15px;
+            font-size: 0.9em;
+            color: yellow;
+            height: 40px;
+            overflow: hidden;
+            border-top: 1px dashed #00ff00;
+            padding-top: 5px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="panel" id="stats-panel">
+    <h2>STATUS [ARCH_BUILDER]</h2>
+    <p>Pakete gebaut: <strong id="packages-display">0</strong></p>
+    <p>PPS (Auto-Build): <strong id="pps-display">0.0</strong></p>
+    <p>CPS (Klicks/Klick): <strong id="cps-display">1</strong></p>
+    <p>Multiplikator: <strong id="multiplier-display">x1</strong></p>
+
+    <button id="main-click-btn" onclick="buildPackage()">
+        [pacman -S] Paket bauen!
+    </button>
+    
+    <div id="message-log">Bereit zur Kompilierung...</div>
+</div>
+
+<div style="display: flex; flex-direction: column; gap: 20px;">
+    <div class="panel" id="click-upgrade-panel">
+        <h2>Klick-Upgrades (CPS)</h2>
+        <div class="upgrade-item">
+            <strong>Optische Maus 🖱️</strong>
+            <p>Erhöht CPS um +1.</p>
+            <div class="buy-btn-container">
+                <span id="opt_mouse_count">Besitz: 0</span>
+                <button id="buy-opt_mouse" onclick="buyClickUpgrade(0)">
+                    Kaufen (50 P)
+                </button>
+            </div>
+        </div>
+        <div class="upgrade-item">
+            <strong>Mechanische Tastatur ⌨️</strong>
+            <p>Erhöht CPS um +5.</p>
+            <div class="buy-btn-container">
+                <span id="mech_key_count">Besitz: 0</span>
+                <button id="buy-mech_key" onclick="buyClickUpgrade(1)">
+                    Kaufen (500 P)
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="panel" id="system-upgrade-panel">
+        <h2>Globale System-Upgrades</h2>
+        <div class="upgrade-item">
+            <strong>Multi-Core System 💥</strong>
+            <p>Verdoppelt den globalen PPS-Multiplikator.</p>
+            <div class="buy-btn-container">
+                <span id="multi_core_count">Besitz: 0</span>
+                <button id="buy-multi_core" onclick="buySystemUpgrade(0)">
+                    Kaufen (5K P)
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="panel" id="automation-panel">
+    <h2>Automatisierung (PPS)</h2>
+    <div class="upgrade-item">
+        <strong>Automatischer Pacbot 🤖</strong>
+        <p>Basis: 0.1 PPS.</p>
+        <div class="buy-btn-container">
+            <span id="pacbot_count">Besitz: 0</span>
+            <button id="buy-pacbot" onclick="buyAutomationUpgrade(0)">
+                Kaufen (10 P)
+            </button>
+        </div>
+    </div>
+    <div class="upgrade-item">
+        <strong>C-Compiler Upgrade ⚙️</strong>
+        <p>Basis: 1 PPS.</p>
+        <div class="buy-btn-container">
+            <span id="compiler_count">Besitz: 0</span>
+            <button id="buy-compiler" onclick="buyAutomationUpgrade(1)">
+                Kaufen (100 P)
+            </button>
+        </div>
+    </div>
+    <div class="upgrade-item">
+        <strong>AUR Helper (yay) ✨</strong>
+        <p>Basis: 5 PPS.</p>
+        <div class="buy-btn-container">
+            <span id="aur_helper_count">Besitz: 0</span>
+            <button id="buy-aur_helper" onclick="buyAutomationUpgrade(2)">
+                Kaufen (500 P)
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+    "use strict";
+
+    // --- Spiel Variablen ---
+    let packages = 0;
+    let clickPower = 1;
+    let basePPS = 0;          // Summe der reinen PPS ohne Multiplikator
+    let systemMultiplier = 1; // Globaler Multiplikator
+    let pps = 0;              // Effektive PPS (basePPS * systemMultiplier)
+
+    // --- Upgrade Daten ---
+    const automationUpgrades = [
+        { name: "pacbot",     baseCost: 10,   cost: 10,   ppsIncrease: 0.1, count: 0, countId: "pacbot_count" },
+        { name: "compiler",   baseCost: 100,  cost: 100,  ppsIncrease: 1,   count: 0, countId: "compiler_count" },
+        { name: "aur_helper", baseCost: 500,  cost: 500,  ppsIncrease: 5,   count: 0, countId: "aur_helper_count" }
+    ];
+
+    const clickUpgrades = [
+        { name: "opt_mouse", baseCost: 50,  cost: 50,  cpsIncrease: 1, count: 0, countId: "opt_mouse_count" },
+        { name: "mech_key",  baseCost: 500, cost: 500, cpsIncrease: 5, count: 0, countId: "mech_key_count" }
+    ];
+    
+    const systemUpgrades = [
+        { name: "multi_core", baseCost: 5000, cost: 5000, multiplierEffect: 2, count: 0, countId: "multi_core_count" }
+    ];
+
+    // --- DOM Elemente ---
+    const packagesDisplay   = document.getElementById("packages-display");
+    const ppsDisplay        = document.getElementById("pps-display");
+    const cpsDisplay        = document.getElementById("cps-display");
+    const multiplierDisplay = document.getElementById("multiplier-display");
+    const messageLog        = document.getElementById("message-log");
+
+    // --- Formatter ---
+    const numFormatter = new Intl.NumberFormat("de-DE", {
+        notation: "compact",
+        maximumFractionDigits: 2
+    });
+
+    // --- Kernfunktionen ---
+
+    // Manuelles Klicken
+    function buildPackage() {
+        packages += clickPower;
+
+        // 1% Chance auf Zero-Day-Bonus
+        if (Math.random() < 0.01) {
+            const bonus = clickPower * 50;
+            packages += bonus;
+            logMessage(
+                `>>> HACKED: Zero-Day Exploit gefunden! +${numFormatter.format(bonus)} Pakete! <<<`,
+                "yellow"
+            );
+        } else {
+            logMessage(`+${clickPower} Pakete.`, "green", true);
+        }
+
+        updateUI();
+    }
+    
+    // System-Upgrade kaufen (globaler Multiplikator)
+    function buySystemUpgrade(index) {
+        const upgrade = systemUpgrades[index];
+        
+        if (packages >= upgrade.cost) {
+            packages -= upgrade.cost;
+            upgrade.count++;
+
+            systemMultiplier *= upgrade.multiplierEffect;
+
+            // Kosten hochdrehen, damit weitere Käufe teuer werden
+            upgrade.baseCost *= 10;
+            upgrade.cost = Math.ceil(upgrade.baseCost * Math.pow(2, upgrade.count));
+            
+            recalculatePPS();
+            updateUI();
+            updateUpgradeButton(upgrade.name, upgrade.cost, upgrade.count, upgrade.countId, packages);
+            logMessage(
+                `>>> SYSTEM UPGRADE: ${upgrade.name.toUpperCase()} aktiviert! Multiplikator: x${systemMultiplier} <<<`,
+                "lime"
+            );
+        }
+    }
+
+    // Automatisierungs-Upgrades (PPS-Quellen)
+    function buyAutomationUpgrade(index) {
+        const upgrade = automationUpgrades[index];
+        
+        if (packages >= upgrade.cost) {
+            packages -= upgrade.cost;
+            upgrade.count++;
+            
+            upgrade.cost = Math.ceil(upgrade.baseCost * Math.pow(1.15, upgrade.count));
+            basePPS += upgrade.ppsIncrease;
+            
+            recalculatePPS();
+            updateUI();
+            updateUpgradeButton(upgrade.name, upgrade.cost, upgrade.count, upgrade.countId, packages);
+        }
+    }
+
+    // Klickkraft-Upgrades
+    function buyClickUpgrade(index) {
+        const upgrade = clickUpgrades[index];
+
+        if (packages >= upgrade.cost) {
+            packages -= upgrade.cost;
+            upgrade.count++;
+
+            upgrade.cost = Math.ceil(upgrade.baseCost * Math.pow(1.15, upgrade.count));
+            clickPower += upgrade.cpsIncrease;
+
+            updateUI();
+            updateUpgradeButton(upgrade.name, upgrade.cost, upgrade.count, upgrade.countId, packages);
+        }
+    }
+
+    // PPS neu berechnen
+    function recalculatePPS() {
+        pps = basePPS * systemMultiplier;
+    }
+
+    // Log-Ausgabe
+    function logMessage(message, color = "white", temporary = false) {
+        messageLog.style.color = color;
+        messageLog.innerText = message;
+        
+        if (temporary) {
+            setTimeout(() => {
+                messageLog.style.color = "#00ff00";
+                // Optional: nicht die Message löschen, damit man noch was sieht
+            }, 500);
+        }
+    }
+
+    // UI aktualisieren
+    function updateUI() {
+        packagesDisplay.innerText = numFormatter.format(packages);
+        ppsDisplay.innerText      = (basePPS * systemMultiplier).toFixed(1);
+        cpsDisplay.innerText      = clickPower;
+        multiplierDisplay.innerText = `x${systemMultiplier}`;
+        
+        automationUpgrades.forEach(u =>
+            updateUpgradeButton(u.name, u.cost, u.count, u.countId, packages)
+        );
+        clickUpgrades.forEach(u =>
+            updateUpgradeButton(u.name, u.cost, u.count, u.countId, packages)
+        );
+        systemUpgrades.forEach(u =>
+            updateUpgradeButton(u.name, u.cost, u.count, u.countId, packages)
+        );
+    }
+
+    // Buttons aktivieren/deaktivieren
+    function updateUpgradeButton(name, cost, count, countId, currentPackages) {
+        const button    = document.getElementById(`buy-${name}`);
+        const countSpan = document.getElementById(countId);
+        
+        if (!button || !countSpan) return;
+
+        const canAfford = currentPackages >= cost;
+        button.disabled = !canAfford;
+
+        button.innerText  = `Kaufen (${numFormatter.format(cost)} P)`;
+        countSpan.innerText = `Besitz: ${count}`;
+    }
+
+    // Spiel-Loop (10 Ticks/Sekunde)
+    function gameLoop() {
+        packages += pps / 10;
+        updateUI();
+    }
+
+    // --- Initialisierung ---
+    recalculatePPS();
+    updateUI();
+    setInterval(gameLoop, 100);
+</script>
+</body>
+</html>
+
