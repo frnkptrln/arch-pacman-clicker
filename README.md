@@ -1,34 +1,33 @@
 # Arch Package Clicker
 ### [pacman -S]… but fun.
 
-Ein kleines Incremental-Game im Look & Feel eines Arch Linux Terminals.  
-Du baust Pakete, kaufst Upgrades und optimierst deine PPS wie ein echter AUR-Maintainer.
+A small incremental game designed with the look and feel of an Arch Linux terminal.
+You build packages, buy upgrades, and optimize your Packages Per Second (PPS) like a true AUR maintainer.
+
+ 
 
 ---
 
 ## 🕹 Features
-- Paketbau per Klick (CPS)
-- Automatisierung via Pacbot, Compiler und AUR Helper (PPS)
-- Globaler System-Multiplikator (Multi-Core Upgrade)
-- Zero-Day Zufallsbonus (1% Chance)
-- Retro-Terminal-UI im Arch-Style
+* Package building via clicking (CPS: Clicks Per Second)
+* Automation through Pacbot, Compiler, and AUR Helper (PPS: Packages Per Second)
+* Global system multiplier (Multi-Core Upgrade)
+* Zero-Day random bonus (1% chance)
+* Retro terminal UI featuring the Arch Linux aesthetic
 
 ---
 
-## 🚀 Starten
-Einfach `index.html` im Browser öffnen.
+## 🚀 Getting Started
+Simply open `index.html` in your web browser.
 
-Keine Dependencies, kein Build-Tooling – pure HTML/CSS/JS.
-
+No dependencies, no build tooling – pure HTML/CSS/JS.
 
 ---
 
-## 📝 Lizenz
+## 📝 License
 MIT License.
 
 ---
 
 ## 🤓 Motivation
-Gebaut aus Spaß am Arch-Ökosystem, Hyprland-Ästhetik und einem kleinen Schuss Nerdkultur.  
-Einfach ein Projekt, das zeigt, wie man Technik spielerisch denken kann.
-
+Built for the fun of the Arch ecosystem, Hyprland aesthetics, and a dash of nerd culture. This project simply demonstrates how technical concepts can be approached playfully.
