@@ -2,26 +2,47 @@
 <html lang="de">
 <head>
     <meta charset="UTF-8">
-    <title>Arch Package Clicker</title>
+    <title>Arch Package Clicker – 0 Pakete</title>
+
+    <!-- Terminal-Style Favicon ($ in grün auf schwarz) -->
+    <link rel="icon" 
+          href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%230d0d0d'/%3E%3Ctext x='4' y='22' font-size='18' fill='%2300ff00'%3E$%3C/text%3E%3C/svg%3E">
+
     <style>
         body {
             font-family: 'Consolas', 'Courier New', monospace;
             background-color: #0d0d0d;
             color: #00ff00;
+
             display: flex;
+            flex-wrap: wrap;
             justify-content: center;
             align-items: flex-start;
             gap: 20px;
             padding: 20px;
             min-height: 100vh;
+            box-sizing: border-box;
         }
+
+        .column {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+
+            /* passt sich an: min 260px, ideal ~320px, max 360px */
+            flex: 1 1 300px;
+            max-width: 360px;
+        }
+
         .panel {
             border: 2px solid #00ff00;
             padding: 15px;
-            width: 300px;
+            width: 100%;
             box-shadow: 0 0 10px #00ff00;
-            margin-bottom: 20px;
+            margin-bottom: 0;
+            box-sizing: border-box;
         }
+
         h2 {
             text-align: center;
             border-bottom: 1px dashed #00ff00;
@@ -29,6 +50,7 @@
             margin-top: 0;
             font-size: 1.4em;
         }
+
         button {
             background-color: #00ff00;
             color: #0d0d0d;
@@ -40,43 +62,53 @@
             margin-top: 10px;
             transition: background-color 0.1s, transform 0.1s;
         }
+
         button:active:not(:disabled) {
             transform: scale(0.98);
         }
+
         button:hover:not(:disabled) {
             background-color: #00dd00;
         }
+
         button:disabled {
             background-color: #303030;
             color: #606060;
             cursor: not-allowed;
         }
+
         .upgrade-item {
             margin-bottom: 10px;
             padding: 8px;
             border: 1px dotted #00ff00;
         }
+
         .upgrade-item strong {
             display: block;
             margin-bottom: 5px;
         }
+
         .buy-btn-container {
             display: flex;
             justify-content: space-between;
             align-items: center;
+            gap: 8px;
         }
+
         .buy-btn-container button {
             width: auto;
             margin: 0;
             padding: 5px 10px;
             font-size: 1em;
         }
+
         #main-click-btn {
             background-color: #00ff00;
             border: 3px solid #00dd00;
             height: 100px;
             font-size: 1.5em;
         }
+
         #message-log {
             margin-top: 15px;
             font-size: 0.9em;
@@ -86,275 +118,728 @@
             border-top: 1px dashed #00ff00;
             padding-top: 5px;
         }
+
+        .prestige-btn {
+            background-color: #ff00ff;
+            color: #0d0d0d;
+        }
+
+        .prestige-btn:hover:not(:disabled) {
+            background-color: #cc00cc;
+        }
     </style>
 </head>
 <body>
 
-<div class="panel" id="stats-panel">
-    <h2>STATUS [ARCH_BUILDER]</h2>
-    <p>Pakete gebaut: <strong id="packages-display">0</strong></p>
-    <p>PPS (Auto-Build): <strong id="pps-display">0.0</strong></p>
-    <p>CPS (Klicks/Klick): <strong id="cps-display">1</strong></p>
-    <p>Multiplikator: <strong id="multiplier-display">x1</strong></p>
+<!-- SPALTE 1: Status + Prestige -->
+<div class="column">
+    <div class="panel" id="stats-panel">
+        <h2>STATUS [ARCH_BUILDER]</h2>
+        <p>Pakete: <strong id="packages-display">0</strong></p>
+        <p>PPS: <strong id="pps-display">0.0</strong></p>
+        <p>CPS: <strong id="cps-display">1</strong></p>
+        <p>Mult: <strong id="multiplier-display">x1</strong></p>
+        <p>AUR Rep: <strong id="reputation-display">0</strong> 
+           (<span id="reputation-bonus">0%</span>)</p>
 
-    <button id="main-click-btn" onclick="buildPackage()">
-        [pacman -S] Paket bauen!
-    </button>
+        <button id="main-click-btn">
+            [pacman -S] Paket bauen!
+        </button>
+        
+        <div id="message-log">Bereit zur Kompilierung...</div>
+    </div>
     
-    <div id="message-log">Bereit zur Kompilierung...</div>
+    <div class="panel" id="prestige-panel">
+        <h2>PRESTIGE [THE RICE]</h2>
+        <p>Req: 1.000.000 Pakete</p>
+        <p>Rep-Gewinn: <strong id="potential-reputation">0</strong></p>
+        <p>Arch Credits: <strong id="archcredits-display">0</strong> AC</p>
+        <button id="prestige-btn" class="prestige-btn">
+            [start_over.sh] Neu starten!
+        </button>
+    </div>
 </div>
 
-<div style="display: flex; flex-direction: column; gap: 20px;">
+<!-- SPALTE 2: Automatisierung -->
+<div class="column">
+    <div class="panel" id="automation-panel">
+        <h2>Automatisierung (PPS)</h2>
+        <div class="upgrade-item">
+            <strong>Pacbot 🤖</strong>
+            <p>+0.1 PPS</p>
+            <div class="buy-btn-container">
+                <span id="pacbot_count">Besitz: 0</span>
+                <button id="buy-pacbot">
+                    Kaufen (10 P)
+                </button>
+            </div>
+        </div>
+        <div class="upgrade-item">
+            <strong>C-Compiler ⚙️</strong>
+            <p>+1 PPS</p>
+            <div class="buy-btn-container">
+                <span id="compiler_count">Besitz: 0</span>
+                <button id="buy-compiler">
+                    Kaufen (100 P)
+                </button>
+            </div>
+        </div>
+        <div class="upgrade-item">
+            <strong>AUR Helper ✨</strong>
+            <p>+5 PPS</p>
+            <div class="buy-btn-container">
+                <span id="aur_helper_count">Besitz: 0</span>
+                <button id="buy-aur_helper">
+                    Kaufen (500 P)
+                </button>
+            </div>
+        </div>
+        <div class="upgrade-item">
+            <strong>Derivate Server 🐧</strong>
+            <p>+20 PPS</p>
+            <div class="buy-btn-container">
+                <span id="derivate_count">Besitz: 0</span>
+                <button id="buy-derivate">
+                    Kaufen (10K P)
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- SPALTE 3: Klick-Upgrades + Core Boost -->
+<div class="column">
     <div class="panel" id="click-upgrade-panel">
         <h2>Klick-Upgrades (CPS)</h2>
         <div class="upgrade-item">
             <strong>Optische Maus 🖱️</strong>
-            <p>Erhöht CPS um +1.</p>
+            <p>+1 CPS</p>
             <div class="buy-btn-container">
                 <span id="opt_mouse_count">Besitz: 0</span>
-                <button id="buy-opt_mouse" onclick="buyClickUpgrade(0)">
+                <button id="buy-opt_mouse">
                     Kaufen (50 P)
                 </button>
             </div>
         </div>
         <div class="upgrade-item">
-            <strong>Mechanische Tastatur ⌨️</strong>
-            <p>Erhöht CPS um +5.</p>
+            <strong>Mech-Tastatur ⌨️</strong>
+            <p>+5 CPS</p>
             <div class="buy-btn-container">
                 <span id="mech_key_count">Besitz: 0</span>
-                <button id="buy-mech_key" onclick="buyClickUpgrade(1)">
+                <button id="buy-mech_key">
                     Kaufen (500 P)
+                </button>
+            </div>
+        </div>
+        <div class="upgrade-item">
+            <strong>Caching 💾</strong>
+            <p>+1% PPS → CPS</p>
+            <div class="buy-btn-container">
+                <span id="caching_count">Besitz: 0</span>
+                <button id="buy-caching">
+                    Kaufen (10K P)
                 </button>
             </div>
         </div>
     </div>
 
     <div class="panel" id="system-upgrade-panel">
-        <h2>Globale System-Upgrades</h2>
+        <h2>Core Boost</h2>
         <div class="upgrade-item">
-            <strong>Multi-Core System 💥</strong>
-            <p>Verdoppelt den globalen PPS-Multiplikator.</p>
+            <strong>Multi-Core 💥</strong>
+            <p>+25% global PPS (max 20)</p>
             <div class="buy-btn-container">
-                <span id="multi_core_count">Besitz: 0</span>
-                <button id="buy-multi_core" onclick="buySystemUpgrade(0)">
-                    Kaufen (5K P)
+                <span id="multi_core_count">Besitz: 0 / 20</span>
+                <button id="buy-multi_core">
+                    Kaufen (200K P)
                 </button>
             </div>
         </div>
     </div>
 </div>
 
-<div class="panel" id="automation-panel">
-    <h2>Automatisierung (PPS)</h2>
-    <div class="upgrade-item">
-        <strong>Automatischer Pacbot 🤖</strong>
-        <p>Basis: 0.1 PPS.</p>
-        <div class="buy-btn-container">
-            <span id="pacbot_count">Besitz: 0</span>
-            <button id="buy-pacbot" onclick="buyAutomationUpgrade(0)">
-                Kaufen (10 P)
-            </button>
+<!-- SPALTE 4: Meta-Upgrades -->
+<div class="column">
+    <div class="panel" id="meta-panel">
+        <h2>Meta-Upgrades (AC)</h2>
+        <p>AC: <strong id="meta-archcredits-display">0</strong></p>
+
+        <div class="upgrade-item">
+            <strong>AUR Boost 📈</strong>
+            <p>RepEff +50%</p>
+            <div class="buy-btn-container">
+                <span id="meta_rep_eff_count">Besitz: 0 / 10</span>
+                <button id="buy-meta_rep_eff">
+                    Kaufen (3 AC)
+                </button>
+            </div>
         </div>
-    </div>
-    <div class="upgrade-item">
-        <strong>C-Compiler Upgrade ⚙️</strong>
-        <p>Basis: 1 PPS.</p>
-        <div class="buy-btn-container">
-            <span id="compiler_count">Besitz: 0</span>
-            <button id="buy-compiler" onclick="buyAutomationUpgrade(1)">
-                Kaufen (100 P)
-            </button>
+
+        <div class="upgrade-item">
+            <strong>CI/CD 🚀</strong>
+            <p>+0.5 PPS/Rep</p>
+            <div class="buy-btn-container">
+                <span id="meta_pps_rep_count">Besitz: 0 / 10</span>
+                <button id="buy-meta_pps_rep">
+                    Kaufen (5 AC)
+                </button>
+            </div>
         </div>
-    </div>
-    <div class="upgrade-item">
-        <strong>AUR Helper (yay) ✨</strong>
-        <p>Basis: 5 PPS.</p>
-        <div class="buy-btn-container">
-            <span id="aur_helper_count">Besitz: 0</span>
-            <button id="buy-aur_helper" onclick="buyAutomationUpgrade(2)">
-                Kaufen (500 P)
-            </button>
+
+        <div class="upgrade-item">
+            <strong>Hyperklick ⚡</strong>
+            <p>+1 CPS base</p>
+            <div class="buy-btn-container">
+                <span id="meta_click_count">Besitz: 0 / 20</span>
+                <button id="buy-meta_click">
+                    Kaufen (2 AC)
+                </button>
+            </div>
         </div>
     </div>
 </div>
 
+
 <script>
-    "use strict";
+"use strict";
 
-    // --- Spiel Variablen ---
-    let packages = 0;
-    let clickPower = 1;
-    let basePPS = 0;          // Summe der reinen PPS ohne Multiplikator
-    let systemMultiplier = 1; // Globaler Multiplikator
-    let pps = 0;              // Effektive PPS (basePPS * systemMultiplier)
+// --- Spiel Variablen ---
+let packages = 0;           
+let totalPackages = 0;      // Pakete in der aktuellen Run
+let clickPower = 1;
+let basePPS = 0;
+let systemMultiplier = 1;
+let pps = 0;
 
-    // --- Upgrade Daten ---
-    const automationUpgrades = [
-        { name: "pacbot",     baseCost: 10,   cost: 10,   ppsIncrease: 0.1, count: 0, countId: "pacbot_count" },
-        { name: "compiler",   baseCost: 100,  cost: 100,  ppsIncrease: 1,   count: 0, countId: "compiler_count" },
-        { name: "aur_helper", baseCost: 500,  cost: 500,  ppsIncrease: 5,   count: 0, countId: "aur_helper_count" }
-    ];
+// Prestige 1: AUR Reputation
+let aurReputation = 0;
 
-    const clickUpgrades = [
-        { name: "opt_mouse", baseCost: 50,  cost: 50,  cpsIncrease: 1, count: 0, countId: "opt_mouse_count" },
-        { name: "mech_key",  baseCost: 500, cost: 500, cpsIncrease: 5, count: 0, countId: "mech_key_count" }
-    ];
+// Prestige 2 / Meta: Arch Credits
+let archCredits = 0;
+
+// Meta-Effekte
+const BASE_REPUTATION_MULTIPLIER = 0.01; // 1% pro Rep
+let reputationMultiplierFactor = 1;      // skaliert den Effekt
+let ppsPerRepFromMeta = 0;               // zusätzl. PPS pro Rep
+let extraCPSFromMeta = 0;                // zusätzl. Basis-CPS
+
+const PRESTIGE_COST = 1_000_000;
+
+// --- Upgrade Daten ---
+const automationUpgrades = [
+    { name: "pacbot",     baseCost: 10,     cost: 10,     ppsIncrease: 0.1,  count: 0, countId: "pacbot_count" },
+    { name: "compiler",   baseCost: 100,    cost: 100,    ppsIncrease: 1,    count: 0, countId: "compiler_count" },
+    { name: "aur_helper", baseCost: 500,    cost: 500,    ppsIncrease: 5,    count: 0, countId: "aur_helper_count" },
+    { name: "derivate",   baseCost: 10000,  cost: 10000,  ppsIncrease: 20,   count: 0, countId: "derivate_count" }
+];
+
+const clickUpgrades = [
+    { name: "opt_mouse", baseCost: 50,     cost: 50,     cpsIncrease: 1,  count: 0, countId: "opt_mouse_count" },
+    { name: "mech_key",  baseCost: 500,    cost: 500,    cpsIncrease: 5,  count: 0, countId: "mech_key_count" },
+    { name: "caching",   baseCost: 10000,  cost: 10000,  cpsIncrease: 0,  isPercentage: true, count: 0, countId: "caching_count" }
+];
+
+const systemUpgrades = [
+    { 
+        name: "multi_core", 
+        baseCost: 200000, 
+        cost: 200000, 
+        multiplierEffect: 1.25, // +25% PPS
+        maxCount: 20,
+        count: 0, 
+        countId: "multi_core_count" 
+    }
+];
+
+// Meta-Upgrades (Late Game)
+const metaUpgrades = [
+    {
+        name: "meta_rep_eff",
+        baseCostAC: 3,
+        costAC: 3,
+        repFactorIncrease: 0.5,
+        count: 0,
+        maxCount: 10,
+        countId: "meta_rep_eff_count"
+    },
+    {
+        name: "meta_pps_rep",
+        baseCostAC: 5,
+        costAC: 5,
+        ppsPerRep: 0.5,
+        count: 0,
+        maxCount: 10,
+        countId: "meta_pps_rep_count"
+    },
+    {
+        name: "meta_click",
+        baseCostAC: 2,
+        costAC: 2,
+        clickIncrease: 1,
+        count: 0,
+        maxCount: 20,
+        countId: "meta_click_count"
+    }
+];
+
+// --- DOM Elemente ---
+const packagesDisplay      = document.getElementById("packages-display");
+const ppsDisplay           = document.getElementById("pps-display");
+const cpsDisplay           = document.getElementById("cps-display");
+const multiplierDisplay    = document.getElementById("multiplier-display");
+const reputationDisplay    = document.getElementById("reputation-display");
+const reputationBonusSpan  = document.getElementById("reputation-bonus");
+const potentialReputationSpan = document.getElementById("potential-reputation");
+const prestigeButton       = document.getElementById("prestige-btn");
+const messageLog           = document.getElementById("message-log");
+const archCreditsDisplay   = document.getElementById("archcredits-display");
+const metaArchCreditsDisplay = document.getElementById("meta-archcredits-display");
+
+// --- Formatter ---
+const numFormatter = new Intl.NumberFormat("de-DE", {
+    notation: "compact",
+    maximumFractionDigits: 2
+});
+
+// kurze kompakte Anzeige (z.B. 12.3K, 4.5M, 1.2G)
+function formatShort(value) {
+    if (!Number.isFinite(value)) return "∞";
+    let n = Math.floor(value);
+    if (n < 1000) return n.toString();
+
+    const units = ["K", "M", "G", "T", "P", "E", "Z", "Y"];
+    let unitIndex = -1;
+    let num = n;
+
+    while (num >= 1000 && unitIndex < units.length - 1) {
+        num /= 1000;
+        unitIndex++;
+    }
+
+    let digits;
+    if (num >= 100)      digits = num.toFixed(0);
+    else if (num >= 10)  digits = num.toFixed(1);
+    else                 digits = num.toFixed(2);
+
+    return `${digits}${units[unitIndex]}`;
+}
+
+function updateTabTitle() {
+    document.title = `APC – ${formatShort(packages)} P`;
+}
+
+function getPrestigeBonus() {
+    return 1 + (aurReputation * BASE_REPUTATION_MULTIPLIER * reputationMultiplierFactor);
+}
+
+// --- Kernfunktionen ---
+function buildPackage() {
+    const currentClickPower = recalculateClickPower();
     
-    const systemUpgrades = [
-        { name: "multi_core", baseCost: 5000, cost: 5000, multiplierEffect: 2, count: 0, countId: "multi_core_count" }
-    ];
+    packages += currentClickPower;
+    totalPackages += currentClickPower;
 
-    // --- DOM Elemente ---
-    const packagesDisplay   = document.getElementById("packages-display");
-    const ppsDisplay        = document.getElementById("pps-display");
-    const cpsDisplay        = document.getElementById("cps-display");
-    const multiplierDisplay = document.getElementById("multiplier-display");
-    const messageLog        = document.getElementById("message-log");
+    if (Math.random() < 0.01) {
+        const bonus = currentClickPower * 50;
+        packages += bonus;
+        totalPackages += bonus;
+        logMessage(
+            `>>> HACKED: Zero-Day Exploit gefunden! +${numFormatter.format(bonus)} Pakete! <<<`,
+            "yellow"
+        );
+    } else {
+        logMessage(`+${numFormatter.format(currentClickPower)} Pakete.`, "green", true);
+    }
 
-    // --- Formatter ---
-    const numFormatter = new Intl.NumberFormat("de-DE", {
-        notation: "compact",
-        maximumFractionDigits: 2
-    });
+    updateUI();
+}
 
-    // --- Kernfunktionen ---
+function buySystemUpgrade(index) {
+    const upgrade = systemUpgrades[index];
 
-    // Manuelles Klicken
-    function buildPackage() {
-        packages += clickPower;
+    if (upgrade.maxCount && upgrade.count >= upgrade.maxCount) {
+        logMessage("Multi-Core ist bereits maximal.", "red", true);
+        return;
+    }
+    
+    if (packages >= upgrade.cost) {
+        packages -= upgrade.cost;
+        upgrade.count++;
 
-        // 1% Chance auf Zero-Day-Bonus
-        if (Math.random() < 0.01) {
-            const bonus = clickPower * 50;
-            packages += bonus;
-            logMessage(
-                `>>> HACKED: Zero-Day Exploit gefunden! +${numFormatter.format(bonus)} Pakete! <<<`,
-                "yellow"
-            );
-        } else {
-            logMessage(`+${clickPower} Pakete.`, "green", true);
-        }
+        systemMultiplier *= upgrade.multiplierEffect;
 
+        // Kosten wachsen binär: 200K, 400K, 800K, 1.6M, ...
+        upgrade.cost = Math.ceil(upgrade.baseCost * Math.pow(2, upgrade.count));
+        
+        recalculatePPS();
         updateUI();
+        updateUpgradeButton(upgrade.name, upgrade.cost, upgrade.count, upgrade.countId, packages);
+        logMessage(
+            `>>> CORE BOOST: x${systemMultiplier.toFixed(2)} PPS <<<`,
+            "lime"
+        );
     }
+}
+
+function buyAutomationUpgrade(index) {
+    const upgrade = automationUpgrades[index];
     
-    // System-Upgrade kaufen (globaler Multiplikator)
-    function buySystemUpgrade(index) {
-        const upgrade = systemUpgrades[index];
+    if (packages >= upgrade.cost) {
+        packages -= upgrade.cost;
+        upgrade.count++;
         
-        if (packages >= upgrade.cost) {
-            packages -= upgrade.cost;
-            upgrade.count++;
-
-            systemMultiplier *= upgrade.multiplierEffect;
-
-            // Kosten hochdrehen, damit weitere Käufe teuer werden
-            upgrade.baseCost *= 10;
-            upgrade.cost = Math.ceil(upgrade.baseCost * Math.pow(2, upgrade.count));
-            
-            recalculatePPS();
-            updateUI();
-            updateUpgradeButton(upgrade.name, upgrade.cost, upgrade.count, upgrade.countId, packages);
-            logMessage(
-                `>>> SYSTEM UPGRADE: ${upgrade.name.toUpperCase()} aktiviert! Multiplikator: x${systemMultiplier} <<<`,
-                "lime"
-            );
-        }
-    }
-
-    // Automatisierungs-Upgrades (PPS-Quellen)
-    function buyAutomationUpgrade(index) {
-        const upgrade = automationUpgrades[index];
+        upgrade.cost = Math.ceil(upgrade.baseCost * Math.pow(1.15, upgrade.count));
+        basePPS += upgrade.ppsIncrease;
         
-        if (packages >= upgrade.cost) {
-            packages -= upgrade.cost;
-            upgrade.count++;
-            
-            upgrade.cost = Math.ceil(upgrade.baseCost * Math.pow(1.15, upgrade.count));
-            basePPS += upgrade.ppsIncrease;
-            
-            recalculatePPS();
-            updateUI();
-            updateUpgradeButton(upgrade.name, upgrade.cost, upgrade.count, upgrade.countId, packages);
-        }
+        recalculatePPS();
+        updateUI();
+        updateUpgradeButton(upgrade.name, upgrade.cost, upgrade.count, upgrade.countId, packages);
     }
+}
 
-    // Klickkraft-Upgrades
-    function buyClickUpgrade(index) {
-        const upgrade = clickUpgrades[index];
+function buyClickUpgrade(index) {
+    const upgrade = clickUpgrades[index];
 
-        if (packages >= upgrade.cost) {
-            packages -= upgrade.cost;
-            upgrade.count++;
+    if (packages >= upgrade.cost) {
+        packages -= upgrade.cost;
+        upgrade.count++;
 
-            upgrade.cost = Math.ceil(upgrade.baseCost * Math.pow(1.15, upgrade.count));
+        upgrade.cost = Math.ceil(upgrade.baseCost * Math.pow(1.15, upgrade.count));
+        
+        if (!upgrade.isPercentage) {
             clickPower += upgrade.cpsIncrease;
-
-            updateUI();
-            updateUpgradeButton(upgrade.name, upgrade.cost, upgrade.count, upgrade.countId, packages);
         }
-    }
-
-    // PPS neu berechnen
-    function recalculatePPS() {
-        pps = basePPS * systemMultiplier;
-    }
-
-    // Log-Ausgabe
-    function logMessage(message, color = "white", temporary = false) {
-        messageLog.style.color = color;
-        messageLog.innerText = message;
         
-        if (temporary) {
-            setTimeout(() => {
-                messageLog.style.color = "#00ff00";
-                // Optional: nicht die Message löschen, damit man noch was sieht
-            }, 500);
+        updateUI();
+        updateUpgradeButton(upgrade.name, upgrade.cost, upgrade.count, upgrade.countId, packages);
+    }
+}
+
+// Meta-Upgrades kaufen
+function buyMetaUpgrade(index) {
+    const upgrade = metaUpgrades[index];
+
+    if (upgrade.maxCount && upgrade.count >= upgrade.maxCount) {
+        logMessage("Meta-Upgrade max.", "red", true);
+        return;
+    }
+
+    if (archCredits >= upgrade.costAC) {
+        archCredits -= upgrade.costAC;
+        upgrade.count++;
+
+        // Kosten in AC wachsen sanft
+        upgrade.costAC = Math.ceil(upgrade.baseCostAC * Math.pow(1.5, upgrade.count));
+
+        recomputeMetaAggregates();
+        recalculatePPS();
+        updateUI();
+        updateMetaUpgradeButton(upgrade);
+        logMessage("Meta-Upgrade gekauft.", "cyan", true);
+    }
+}
+
+function recomputeMetaAggregates() {
+    reputationMultiplierFactor = 1;
+    ppsPerRepFromMeta = 0;
+    extraCPSFromMeta = 0;
+
+    metaUpgrades.forEach(u => {
+        if (u.name === "meta_rep_eff") {
+            reputationMultiplierFactor += (u.repFactorIncrease || 0) * u.count;
+        } else if (u.name === "meta_pps_rep") {
+            ppsPerRepFromMeta += (u.ppsPerRep || 0) * u.count;
+        } else if (u.name === "meta_click") {
+            extraCPSFromMeta += (u.clickIncrease || 0) * u.count;
         }
+    });
+}
+
+function recalculatePPS() {
+    const prestigeBonus = getPrestigeBonus();
+    pps = (basePPS + aurReputation * ppsPerRepFromMeta) * systemMultiplier * prestigeBonus;
+}
+
+function recalculateClickPower() {
+    let currentClickPower = clickPower + extraCPSFromMeta;
+    
+    const cachingUpgrade = clickUpgrades.find(u => u.name === "caching");
+    if (cachingUpgrade && cachingUpgrade.count > 0) {
+        currentClickPower += pps * 0.01 * cachingUpgrade.count;
     }
 
-    // UI aktualisieren
-    function updateUI() {
-        packagesDisplay.innerText = numFormatter.format(packages);
-        ppsDisplay.innerText      = (basePPS * systemMultiplier).toFixed(1);
-        cpsDisplay.innerText      = clickPower;
-        multiplierDisplay.innerText = `x${systemMultiplier}`;
-        
-        automationUpgrades.forEach(u =>
-            updateUpgradeButton(u.name, u.cost, u.count, u.countId, packages)
+    const prestigeBonus = getPrestigeBonus();
+    
+    return Math.max(1, Math.round(currentClickPower * prestigeBonus));
+}
+
+function startOver() {
+    const potentialTotalReputation = Math.floor(totalPackages / PRESTIGE_COST);
+    const gainedReputation = potentialTotalReputation - aurReputation;
+
+    if (gainedReputation > 0) {
+        // Arch Credits abgeleitet aus zusätzlicher Rep
+        const gainedArchCredits = Math.floor(gainedReputation / 5);
+        aurReputation = potentialTotalReputation;
+        archCredits += gainedArchCredits;
+
+        // Soft-Reset: alles außer AUR Rep & Arch Credits
+        packages = 0;
+        clickPower = 1;
+        basePPS = 0;
+        systemMultiplier = 1;
+        totalPackages = 0;
+
+        automationUpgrades.forEach(u => {
+            u.count = 0;
+            u.cost = u.baseCost;
+        });
+        clickUpgrades.forEach(u => {
+            u.count = 0;
+            u.cost = u.baseCost;
+        });
+        systemUpgrades.forEach(u => {
+            u.count = 0;
+            u.cost = u.baseCost;
+        });
+
+        // Meta bleibt, aber neu berechnen
+        recomputeMetaAggregates();
+        recalculatePPS();
+
+        const bonusPercent = (aurReputation * BASE_REPUTATION_MULTIPLIER * reputationMultiplierFactor * 100).toFixed(0);
+        logMessage(
+            `>>> THE RICE: +${gainedReputation} Rep, +${gainedArchCredits} AC, jetzt ~${bonusPercent}% Bonus <<<`,
+            "magenta"
         );
-        clickUpgrades.forEach(u =>
-            updateUpgradeButton(u.name, u.cost, u.count, u.countId, packages)
-        );
-        systemUpgrades.forEach(u =>
-            updateUpgradeButton(u.name, u.cost, u.count, u.countId, packages)
-        );
+        saveGame();
+    } else {
+        logMessage(`Zu wenig neue Pakete für mehr Rep.`, "red");
+    }
+    updateUI();
+}
+
+// --- UI / Hilfsfunktionen ---
+function logMessage(message, color = "white", temporary = false) {
+    messageLog.style.color = color;
+    messageLog.innerText = message;
+    
+    if (temporary) {
+        setTimeout(() => {
+            messageLog.style.color = "#00ff00";
+        }, 500);
+    }
+}
+
+function updateUI() {
+    const currentClickPower = recalculateClickPower();
+
+    const potentialTotalReputation = Math.floor(totalPackages / PRESTIGE_COST);
+    const potentialGain = Math.max(potentialTotalReputation - aurReputation, 0);
+
+    packagesDisplay.innerText = numFormatter.format(packages);
+
+    if (pps < 1_000_000) {
+        ppsDisplay.innerText = pps.toFixed(2);
+    } else if (pps < 1e18) {
+        ppsDisplay.innerText = formatShort(pps);
+    } else {
+        ppsDisplay.innerText = pps.toExponential(2);
     }
 
-    // Buttons aktivieren/deaktivieren
-    function updateUpgradeButton(name, cost, count, countId, currentPackages) {
-        const button    = document.getElementById(`buy-${name}`);
-        const countSpan = document.getElementById(countId);
-        
-        if (!button || !countSpan) return;
+    cpsDisplay.innerText = numFormatter.format(currentClickPower);
+    multiplierDisplay.innerText = `x${systemMultiplier.toFixed(2)}`;
 
-        const canAfford = currentPackages >= cost;
-        button.disabled = !canAfford;
+    reputationDisplay.innerText = numFormatter.format(aurReputation);
+    const repBonus = aurReputation * BASE_REPUTATION_MULTIPLIER * reputationMultiplierFactor * 100;
+    reputationBonusSpan.innerText = `${repBonus.toFixed(0)}%`;
+    potentialReputationSpan.innerText = potentialGain;
 
-        button.innerText  = `Kaufen (${numFormatter.format(cost)} P)`;
+    archCreditsDisplay.innerText = archCredits;
+    metaArchCreditsDisplay.innerText = archCredits;
+
+    prestigeButton.disabled = potentialGain <= 0;
+
+    automationUpgrades.forEach(u =>
+        updateUpgradeButton(u.name, u.cost, u.count, u.countId, packages)
+    );
+    clickUpgrades.forEach(u =>
+        updateUpgradeButton(u.name, u.cost, u.count, u.countId, packages)
+    );
+    systemUpgrades.forEach(u =>
+        updateUpgradeButton(u.name, u.cost, u.count, u.countId, packages)
+    );
+
+    metaUpgrades.forEach(updateMetaUpgradeButton);
+
+    updateTabTitle();
+}
+
+function updateUpgradeButton(name, cost, count, countId, currentPackages) {
+    const button    = document.getElementById(`buy-${name}`);
+    const countSpan = document.getElementById(countId);
+    if (!button || !countSpan) return;
+
+    const allUpgrades = [...automationUpgrades, ...clickUpgrades, ...systemUpgrades];
+    const upgrade = allUpgrades.find(u => u.name === name);
+
+    let maxCount = upgrade && upgrade.maxCount ? upgrade.maxCount : null;
+    const atCap = maxCount !== null && count >= maxCount;
+    const canAfford = !atCap && currentPackages >= cost;
+
+    button.disabled = !canAfford;
+
+    if (atCap) {
+        button.innerText = "Max";
+    } else {
+        button.innerText = `Kaufen (${numFormatter.format(cost)} P)`;
+    }
+
+    if (maxCount) {
+        countSpan.innerText = `Besitz: ${count} / ${maxCount}`;
+    } else {
         countSpan.innerText = `Besitz: ${count}`;
     }
+}
 
-    // Spiel-Loop (10 Ticks/Sekunde)
-    function gameLoop() {
-        packages += pps / 10;
-        updateUI();
+function updateMetaUpgradeButton(upgrade) {
+    const button    = document.getElementById(`buy-${upgrade.name}`);
+    const countSpan = document.getElementById(upgrade.countId);
+    if (!button || !countSpan) return;
+
+    const atCap = upgrade.maxCount && upgrade.count >= upgrade.maxCount;
+    const canAfford = !atCap && archCredits >= upgrade.costAC;
+
+    button.disabled = !canAfford;
+
+    if (atCap) {
+        button.innerText = "Max";
+    } else {
+        button.innerText = `Kaufen (${upgrade.costAC} AC)`;
     }
 
-    // --- Initialisierung ---
+    if (upgrade.maxCount) {
+        countSpan.innerText = `Besitz: ${upgrade.count} / ${upgrade.maxCount}`;
+    } else {
+        countSpan.innerText = `Besitz: ${upgrade.count}`;
+    }
+}
+
+// --- Speicherfunktionen ---
+const SAVE_KEY = "archPackageClickerSave_v2";
+
+function saveGame() {
+    const saveData = {
+        packages,
+        totalPackages,
+        systemMultiplier,
+        aurReputation,
+        archCredits,
+        automationUpgrades: automationUpgrades.map(u => ({ name: u.name, cost: u.cost, count: u.count })),
+        clickUpgrades:      clickUpgrades.map(u => ({ name: u.name, cost: u.cost, count: u.count })),
+        systemUpgrades:     systemUpgrades.map(u => ({ name: u.name, cost: u.cost, count: u.count })),
+        metaUpgrades:       metaUpgrades.map(u => ({ name: u.name, costAC: u.costAC, count: u.count }))
+    };
+    localStorage.setItem(SAVE_KEY, JSON.stringify(saveData));
+}
+
+function loadGame() {
+    const savedData = localStorage.getItem(SAVE_KEY);
+    if (!savedData) return false;
+
+    const data = JSON.parse(savedData);
+    
+    packages         = data.packages ?? 0;
+    totalPackages    = data.totalPackages ?? 0;
+    systemMultiplier = data.systemMultiplier ?? 1;
+    aurReputation    = data.aurReputation ?? 0;
+    archCredits      = data.archCredits ?? 0;
+
+    loadUpgradeData(automationUpgrades, data.automationUpgrades);
+    loadUpgradeData(clickUpgrades,      data.clickUpgrades);
+    loadUpgradeData(systemUpgrades,     data.systemUpgrades);
+    loadMetaUpgradeData(metaUpgrades,   data.metaUpgrades);
+
+    basePPS = 0;
+    automationUpgrades.forEach(u => {
+        basePPS += u.count * u.ppsIncrease;
+    });
+
+    clickPower = 1;
+    clickUpgrades.forEach(u => {
+        if (!u.isPercentage) {
+            clickPower += u.count * u.cpsIncrease;
+        }
+    });
+
+    recomputeMetaAggregates();
+    recalculatePPS();
+    logMessage("Spiel geladen!", "green");
+    return true;
+}
+
+function loadUpgradeData(target, source) {
+    if (!source) return;
+    source.forEach((sourceItem, index) => {
+        if (target[index]) {
+            target[index].count = sourceItem.count ?? 0;
+            target[index].cost  = sourceItem.cost  ?? target[index].baseCost;
+        }
+    });
+}
+
+function loadMetaUpgradeData(target, source) {
+    if (!source) return;
+    source.forEach((sourceItem, index) => {
+        if (target[index]) {
+            target[index].count  = sourceItem.count  ?? 0;
+            target[index].costAC = sourceItem.costAC ?? target[index].baseCostAC;
+        }
+    });
+}
+
+function gameLoop() {
+    packages      += pps / 10;
+    totalPackages += pps / 10;
+    updateUI();
+}
+
+function init() {
+    document.getElementById("main-click-btn")
+        .addEventListener("click", buildPackage);
+    prestigeButton
+        .addEventListener("click", startOver);
+
+    automationUpgrades.forEach((u, index) => {
+        const btn = document.getElementById(`buy-${u.name}`);
+        if (btn) btn.addEventListener("click", () => buyAutomationUpgrade(index));
+    });
+
+    clickUpgrades.forEach((u, index) => {
+        const btn = document.getElementById(`buy-${u.name}`);
+        if (btn) btn.addEventListener("click", () => buyClickUpgrade(index));
+    });
+
+    systemUpgrades.forEach((u, index) => {
+        const btn = document.getElementById(`buy-${u.name}`);
+        if (btn) btn.addEventListener("click", () => buySystemUpgrade(index));
+    });
+
+    metaUpgrades.forEach((u, index) => {
+        const btn = document.getElementById(`buy-${u.name}`);
+        if (btn) btn.addEventListener("click", () => buyMetaUpgrade(index));
+    });
+
+    loadGame();
     recalculatePPS();
     updateUI();
+
     setInterval(gameLoop, 100);
+    setInterval(saveGame, 30000);
+    window.addEventListener("beforeunload", saveGame);
+}
+
+init();
 </script>
 </body>
 </html>
