@@ -2,6 +2,7 @@
 <html lang="de">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Arch Package Clicker – 0 Pakete</title>
 
     <!-- Terminal-Style Favicon ($ in grün auf schwarz) -->
@@ -9,6 +10,12 @@
           href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%230d0d0d'/%3E%3Ctext x='4' y='22' font-size='18' fill='%2300ff00'%3E$%3C/text%3E%3C/svg%3E">
 
     <style>
+        * { box-sizing: border-box; }
+        .column { min-width: 0; }
+        button:focus-visible { outline: 3px solid white; outline-offset: 3px; }
+        #save-status { line-height: 1.5; overflow-wrap: anywhere; }
+        @media (max-width: 440px) { body { padding: 8px; margin: 0; } .buy-btn-container { flex-wrap: wrap; } }
+        @media (prefers-reduced-motion: reduce) { button { transition: none; } }
         body {
             font-family: 'Consolas', 'Courier New', monospace;
             background-color: #0d0d0d;
@@ -160,6 +167,18 @@
     </div>
 </div>
 
+<div class="column">
+    <section class="panel" aria-labelledby="save-heading">
+        <h2 id="save-heading">SPIELSTAND</h2>
+        <p>Deine Automaten arbeiten bis zu acht Stunden weiter, während du weg bist.</p>
+        <p id="save-status" role="status">Fortschritt bleibt in diesem Browser.</p>
+        <button id="save-now">[sync] Jetzt speichern</button>
+        <button id="export-save">[backup] Spielstand exportieren</button>
+        <button id="import-save">[restore] Spielstand importieren</button>
+        <input id="save-file" type="file" accept="application/json,.json" hidden>
+    </section>
+</div>
+
 <!-- SPALTE 2: Automatisierung -->
 <div class="column">
     <div class="panel" id="automation-panel">
@@ -300,6 +319,7 @@
 </div>
 
 
+<script src="persistence.js"></script>
 <script>
 "use strict";
 
@@ -434,6 +454,7 @@ function getPrestigeBonus() {
 
 // --- Kernfunktionen ---
 function buildPackage() {
+    advanceGame();
     const currentClickPower = recalculateClickPower();
     
     packages += currentClickPower;
@@ -455,6 +476,7 @@ function buildPackage() {
 }
 
 function buySystemUpgrade(index) {
+    advanceGame();
     const upgrade = systemUpgrades[index];
 
     if (upgrade.maxCount && upgrade.count >= upgrade.maxCount) {
@@ -482,6 +504,7 @@ function buySystemUpgrade(index) {
 }
 
 function buyAutomationUpgrade(index) {
+    advanceGame();
     const upgrade = automationUpgrades[index];
     
     if (packages >= upgrade.cost) {
@@ -498,6 +521,7 @@ function buyAutomationUpgrade(index) {
 }
 
 function buyClickUpgrade(index) {
+    advanceGame();
     const upgrade = clickUpgrades[index];
 
     if (packages >= upgrade.cost) {
@@ -517,6 +541,7 @@ function buyClickUpgrade(index) {
 
 // Meta-Upgrades kaufen
 function buyMetaUpgrade(index) {
+    advanceGame();
     const upgrade = metaUpgrades[index];
 
     if (upgrade.maxCount && upgrade.count >= upgrade.maxCount) {
@@ -574,6 +599,7 @@ function recalculateClickPower() {
 }
 
 function startOver() {
+    advanceGame();
     const potentialTotalReputation = Math.floor(totalPackages / PRESTIGE_COST);
     const gainedReputation = potentialTotalReputation - aurReputation;
 
@@ -726,81 +752,106 @@ function updateMetaUpgradeButton(upgrade) {
 }
 
 // --- Speicherfunktionen ---
-const SAVE_KEY = "archPackageClickerSave_v2";
+const SAVE_KEY = "archPackageClickerSave_v2"; // Keep existing v2 saves readable.
+const upgradeGroups = { automationUpgrades, clickUpgrades, systemUpgrades, metaUpgrades };
+let lastTick = Date.now();
+let savingAllowed = true;
+const saveStatus = document.getElementById("save-status");
+
+function snapshot() {
+    return {
+        version: 3, savedAt: lastTick, packages, totalPackages, aurReputation, archCredits,
+        ...Object.fromEntries(Object.entries(upgradeGroups).map(([key, list]) =>
+            [key, list.map(u => ({name: u.name, count: u.count}))]))
+    };
+}
+
+function advanceGame(now = Date.now()) {
+    const seconds = ClickerPersistence.elapsedSeconds(lastTick, now);
+    const gain = pps * seconds;
+    packages = Math.min(ClickerPersistence.MAX_BALANCE, packages + gain);
+    totalPackages = Math.min(ClickerPersistence.MAX_BALANCE, totalPackages + gain);
+    lastTick = Math.max(lastTick, now);
+    return gain;
+}
 
 function saveGame() {
-    const saveData = {
-        packages,
-        totalPackages,
-        systemMultiplier,
-        aurReputation,
-        archCredits,
-        automationUpgrades: automationUpgrades.map(u => ({ name: u.name, cost: u.cost, count: u.count })),
-        clickUpgrades:      clickUpgrades.map(u => ({ name: u.name, cost: u.cost, count: u.count })),
-        systemUpgrades:     systemUpgrades.map(u => ({ name: u.name, cost: u.cost, count: u.count })),
-        metaUpgrades:       metaUpgrades.map(u => ({ name: u.name, costAC: u.costAC, count: u.count }))
-    };
-    localStorage.setItem(SAVE_KEY, JSON.stringify(saveData));
+    advanceGame();
+    if (!savingAllowed) return false;
+    try {
+        localStorage.setItem(SAVE_KEY, JSON.stringify(snapshot()));
+        saveStatus.textContent = "Gespeichert · " + new Date(lastTick).toLocaleTimeString("de-DE");
+        return true;
+    } catch (error) {
+        saveStatus.textContent = "Browserspeicher nicht verfügbar. Exportiere deinen Spielstand als Datei.";
+        return false;
+    }
+}
+
+function restoreGame(raw) {
+    // Validate the entire document before changing any live game state.
+    const data = ClickerPersistence.normalizeSave(raw, upgradeGroups);
+    packages = data.packages;
+    totalPackages = data.totalPackages;
+    aurReputation = data.aurReputation;
+    archCredits = data.archCredits;
+    for (const [key, list] of Object.entries(upgradeGroups)) {
+        list.forEach((u, index) => {
+            u.count = data[key][index].count;
+            if (key === "metaUpgrades") u.costAC = Math.ceil(u.baseCostAC * Math.pow(1.5, u.count));
+            else u.cost = Math.ceil(u.baseCost * Math.pow(key === "systemUpgrades" ? 2 : 1.15, u.count));
+        });
+    }
+    basePPS = automationUpgrades.reduce((sum, u) => sum + u.count * u.ppsIncrease, 0);
+    clickPower = 1 + clickUpgrades.reduce((sum, u) => sum + (u.isPercentage ? 0 : u.count * u.cpsIncrease), 0);
+    systemMultiplier = systemUpgrades.reduce((value, u) => value * Math.pow(u.multiplierEffect, u.count), 1);
+    recomputeMetaAggregates();
+    recalculatePPS();
+    const now = Date.now();
+    const seconds = ClickerPersistence.elapsedSeconds(data.savedAt, now);
+    lastTick = now - seconds * 1000;
+    const gain = advanceGame(now);
+    savingAllowed = true;
+    saveGame(); // Consume offline time immediately: reloading must not credit it twice.
+    updateUI();
+    logMessage(gain > 0 ? `Willkommen zurück! +${numFormatter.format(gain)} Pakete während deiner Pause.` : "Spiel geladen!", "cyan");
 }
 
 function loadGame() {
-    const savedData = localStorage.getItem(SAVE_KEY);
-    if (!savedData) return false;
-
-    const data = JSON.parse(savedData);
-    
-    packages         = data.packages ?? 0;
-    totalPackages    = data.totalPackages ?? 0;
-    systemMultiplier = data.systemMultiplier ?? 1;
-    aurReputation    = data.aurReputation ?? 0;
-    archCredits      = data.archCredits ?? 0;
-
-    loadUpgradeData(automationUpgrades, data.automationUpgrades);
-    loadUpgradeData(clickUpgrades,      data.clickUpgrades);
-    loadUpgradeData(systemUpgrades,     data.systemUpgrades);
-    loadMetaUpgradeData(metaUpgrades,   data.metaUpgrades);
-
-    basePPS = 0;
-    automationUpgrades.forEach(u => {
-        basePPS += u.count * u.ppsIncrease;
-    });
-
-    clickPower = 1;
-    clickUpgrades.forEach(u => {
-        if (!u.isPercentage) {
-            clickPower += u.count * u.cpsIncrease;
-        }
-    });
-
-    recomputeMetaAggregates();
-    recalculatePPS();
-    logMessage("Spiel geladen!", "green");
-    return true;
+    try {
+        const saved = localStorage.getItem(SAVE_KEY);
+        if (saved) restoreGame(JSON.parse(saved));
+    } catch (error) {
+        savingAllowed = false; // Preserve the unreadable original for recovery.
+        saveStatus.textContent = "Spielstand nicht lesbar oder Speicher gesperrt. Die bisherige Datei bleibt erhalten. Importiere ein Backup oder speichere ausdrücklich neu.";
+    }
 }
 
-function loadUpgradeData(target, source) {
-    if (!source) return;
-    source.forEach((sourceItem, index) => {
-        if (target[index]) {
-            target[index].count = sourceItem.count ?? 0;
-            target[index].cost  = sourceItem.cost  ?? target[index].baseCost;
-        }
-    });
+function exportGame() {
+    advanceGame();
+    const url = URL.createObjectURL(new Blob([JSON.stringify(snapshot(), null, 2)], {type: "application/json"}));
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "arch-package-clicker-save.json";
+    link.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-function loadMetaUpgradeData(target, source) {
-    if (!source) return;
-    source.forEach((sourceItem, index) => {
-        if (target[index]) {
-            target[index].count  = sourceItem.count  ?? 0;
-            target[index].costAC = sourceItem.costAC ?? target[index].baseCostAC;
-        }
-    });
+async function importGame(file) {
+    if (!file) return;
+    try {
+        if (file.size > 100000) throw new Error("Spielstand-Datei ist zu groß.");
+        const raw = JSON.parse(await file.text());
+        ClickerPersistence.normalizeSave(raw, upgradeGroups);
+        if (!window.confirm("Aktuellen Spielstand durch diese Datei ersetzen?")) return;
+        restoreGame(raw);
+    } catch (error) {
+        saveStatus.textContent = "Import abgebrochen: " + error.message;
+    }
 }
 
 function gameLoop() {
-    packages      += pps / 10;
-    totalPackages += pps / 10;
+    advanceGame();
     updateUI();
 }
 
@@ -830,6 +881,23 @@ function init() {
         if (btn) btn.addEventListener("click", () => buyMetaUpgrade(index));
     });
 
+    document.getElementById("save-now").addEventListener("click", () => {
+        if (!savingAllowed && !window.confirm("Den bisherigen unlesbaren Spielstand ersetzen?")) return;
+        savingAllowed = true;
+        saveGame();
+    });
+    document.getElementById("export-save").addEventListener("click", exportGame);
+    const fileInput = document.getElementById("save-file");
+    document.getElementById("import-save").addEventListener("click", () => fileInput.click());
+    fileInput.addEventListener("change", async () => {
+        await importGame(fileInput.files[0]);
+        fileInput.value = "";
+    });
+    document.addEventListener("visibilitychange", () => {
+        gameLoop();
+        if (document.hidden) saveGame();
+    });
+    window.addEventListener("pagehide", saveGame);
     loadGame();
     recalculatePPS();
     updateUI();
